@@ -1,0 +1,6 @@
+{
+  "name": "지능형 IR 플래시 & 과속 경고 하이브리드 시스템 분석",
+  "description": "DC 12V 기반 지능형 야간 교통 단속 및 과속 시각 경고 하이브리드 시스템 광학·전기 메커니즘, 제품 비교, 엔지니어링 계산기 및 결선 가이드",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
