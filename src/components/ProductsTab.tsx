@@ -21,7 +21,12 @@ import {
   ArrowUpDown,
   CheckSquare,
   Square,
-  Maximize2
+  Maximize2,
+  Compass,
+  Thermometer,
+  Droplets,
+  Clock,
+  Layers
 } from 'lucide-react';
 
 type SortOption =
@@ -38,6 +43,13 @@ type WarningColorFilter = 'ALL' | 'WHITE' | 'RED' | 'SELECTABLE';
 type SizeFilter = 'ALL' | 'SMALL' | 'MEDIUM' | 'LARGE'; // SMALL: <=120, MEDIUM: 150-165, LARGE: >=200
 type PowerFilter = 'ALL' | 'LOW' | 'MEDIUM' | 'HIGH'; // LOW: <=15W, MEDIUM: 15-30W, HIGH: >30W
 type ViewMode = 'table' | 'card';
+
+interface TooltipData {
+  product: ProductItem;
+  x: number;
+  y: number;
+  placement: 'top' | 'bottom';
+}
 
 export const ProductsTab: React.FC = () => {
   // Category & Search
@@ -58,6 +70,25 @@ export const ProductsTab: React.FC = () => {
   const [selectedProduct, setSelectedProduct] = useState<ProductItem | null>(null);
   const [compareList, setCompareList] = useState<string[]>([]);
   const [showCompareModal, setShowCompareModal] = useState<boolean>(false);
+
+  // Hover Tooltip State (배광 곡선, 발열량, 방수 등급 등 상세 스펙 툴팁)
+  const [tooltipData, setTooltipData] = useState<TooltipData | null>(null);
+
+  // Tooltip Handlers
+  const handleMouseEnter = (product: ProductItem, e: React.MouseEvent<HTMLElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const placement = spaceBelow < 380 ? 'top' : 'bottom';
+    const width = 380;
+    const centerX = rect.left + rect.width / 2;
+    const x = Math.min(Math.max(16, centerX - width / 2), window.innerWidth - width - 16);
+    const y = placement === 'bottom' ? rect.bottom + 8 : rect.top - 8;
+    setTooltipData({ product, x, y, placement });
+  };
+
+  const handleMouseLeave = () => {
+    setTooltipData(null);
+  };
 
   // Check if any filter is active
   const isFiltered = useMemo(() => {
@@ -171,6 +202,9 @@ export const ProductsTab: React.FC = () => {
           item.visWavelength.toLowerCase().includes(q) ||
           item.price.toLowerCase().includes(q) ||
           item.wavelength.toLowerCase().includes(q) ||
+          item.beamAngle.toLowerCase().includes(q) ||
+          item.thermalManagement.toLowerCase().includes(q) ||
+          item.protectionRating.toLowerCase().includes(q) ||
           item.desc.toLowerCase().includes(q);
         if (!matchesSearch) return false;
       }
@@ -231,6 +265,9 @@ export const ProductsTab: React.FC = () => {
           <strong className="text-white"> ③ 차번 식별용 IR 파장(740nm ~ 850nm)</strong> 및 
           <strong className="text-white"> 과속 시각 경고용 가시광선(백색 White 6000K 또는 적색 Red 620~630nm)</strong>을 탑재한 
           DC 12V 기반의 검증된 ITS 하이브리드 투광기 및 경광 제품군으로 구성되어 있습니다.
+          <span className="text-amber-300 font-semibold block mt-1">
+            ✨ 표와 카드 내 각 제품명 또는 [배광·발열·방수] 뱃지에 마우스를 올리시면(호버) 정밀 배광 곡선, 발열량 및 방열 기구, 방수/내구성 등급을 즉시 확인하실 수 있습니다.
+          </span>
         </p>
 
         {/* Wavelength & Warning Matrix Summary */}
@@ -477,7 +514,7 @@ export const ProductsTab: React.FC = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="모델명, 지름(100mm), 740nm, 850nm, 백색, 적색..."
+              placeholder="모델명, 지름, 740nm, 850nm, 배광각, 방열, IP67..."
               className="w-full bg-slate-50 border border-slate-300 rounded-lg pl-9 pr-3 py-1.5 text-xs focus:outline-none focus:border-amber-500 focus:bg-white transition"
             />
             {searchQuery && (
@@ -560,7 +597,7 @@ export const ProductsTab: React.FC = () => {
               <thead>
                 <tr className="bg-slate-900 text-slate-100 border-b border-slate-800">
                   <th className="p-3 font-bold w-10 text-center">비교</th>
-                  <th className="p-3 font-bold min-w-[170px]">제품명 / 제조사</th>
+                  <th className="p-3 font-bold min-w-[190px]">제품명 / 제조사 (호버 툴팁)</th>
                   <th className="p-3 font-bold min-w-[130px] text-amber-300">
                     <button
                       onClick={() => setSortOption(prev => prev === 'DIAMETER_ASC' ? 'DIAMETER_DESC' : 'DIAMETER_ASC')}
@@ -635,19 +672,35 @@ export const ProductsTab: React.FC = () => {
                         </button>
                       </td>
 
-                      {/* Product Name & Brand */}
+                      {/* Product Name & Brand with Hover Tooltip Trigger */}
                       <td className="p-3">
-                        <div className="font-bold text-slate-900 text-xs">{item.name}</div>
-                        <div className="text-[10px] text-slate-500">{item.brand}</div>
-                        <div className="mt-1 flex items-center space-x-1">
-                          <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
-                            item.category === 'HYBRID' ? 'bg-purple-100 text-purple-800' :
-                            item.category === 'IR_VIS_WHITE' ? 'bg-blue-100 text-blue-800' :
-                            item.category === 'IR_VIS_RED' ? 'bg-red-100 text-red-800' :
-                            'bg-amber-100 text-amber-800'
-                          }`}>
-                            {item.type}
-                          </span>
+                        <div
+                          onMouseEnter={(e) => handleMouseEnter(item, e)}
+                          onMouseLeave={handleMouseLeave}
+                          className="cursor-pointer group/item hover:opacity-95"
+                        >
+                          <div className="font-bold text-slate-900 text-xs group-hover/item:text-amber-700 transition flex items-center gap-1.5">
+                            <span>{item.name}</span>
+                          </div>
+                          <div className="text-[10px] text-slate-500 flex items-center justify-between mt-0.5">
+                            <span>{item.brand}</span>
+                          </div>
+
+                          {/* Hover Spec Quick Badge */}
+                          <div className="mt-1 flex items-center space-x-1.5 flex-wrap gap-y-1">
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
+                              item.category === 'HYBRID' ? 'bg-purple-100 text-purple-800' :
+                              item.category === 'IR_VIS_WHITE' ? 'bg-blue-100 text-blue-800' :
+                              item.category === 'IR_VIS_RED' ? 'bg-red-100 text-red-800' :
+                              'bg-amber-100 text-amber-800'
+                            }`}>
+                              {item.type}
+                            </span>
+                            <span className="inline-flex items-center text-[9px] text-slate-600 bg-slate-100 hover:bg-amber-100 border border-slate-200 px-1.5 py-0.5 rounded font-medium transition gap-1">
+                              <Layers className="w-2.5 h-2.5 text-amber-600" />
+                              <span>배광·발열·방수 툴팁</span>
+                            </span>
+                          </div>
                         </div>
                       </td>
 
@@ -776,7 +829,13 @@ export const ProductsTab: React.FC = () => {
                       )}
                     </button>
                   </div>
-                  <h4 className="font-bold text-slate-900 text-sm leading-snug">{item.name}</h4>
+                  <h4
+                    onMouseEnter={(e) => handleMouseEnter(item, e)}
+                    onMouseLeave={handleMouseLeave}
+                    className="font-bold text-slate-900 text-sm leading-snug hover:text-amber-700 cursor-pointer transition flex items-center justify-between"
+                  >
+                    <span>{item.name}</span>
+                  </h4>
                   <div className="mt-2 flex items-center justify-between">
                     <span className="inline-flex items-center space-x-1 bg-amber-50 text-amber-950 border border-amber-200 font-black px-2 py-0.5 rounded text-[11px]">
                       <CircleDot className="w-3.5 h-3.5 text-amber-600" />
@@ -828,6 +887,19 @@ export const ProductsTab: React.FC = () => {
                     </div>
                   </div>
 
+                  {/* Interactive Spec Hover Trigger Bar */}
+                  <div
+                    onMouseEnter={(e) => handleMouseEnter(item, e)}
+                    onMouseLeave={handleMouseLeave}
+                    className="bg-amber-50/70 hover:bg-amber-100/90 border border-amber-200 text-amber-950 p-2 rounded-lg transition cursor-pointer flex items-center justify-between text-[11px]"
+                  >
+                    <div className="flex items-center space-x-1.5 font-bold">
+                      <Layers className="w-3.5 h-3.5 text-amber-700" />
+                      <span>배광 곡선 · 발열량 · 방수 등급</span>
+                    </div>
+                    <span className="text-[10px] text-amber-800 font-semibold">호버 툴팁 보기 🔍</span>
+                  </div>
+
                   <p className="text-[11px] text-slate-600 line-clamp-2 leading-relaxed">
                     {item.desc}
                   </p>
@@ -866,6 +938,102 @@ export const ProductsTab: React.FC = () => {
               </div>
             ))
           )}
+        </div>
+      )}
+
+      {/* Floating Dynamic Spec Hover Tooltip (배광 곡선, 발열량, 방수 등급 상세) */}
+      {tooltipData && (
+        <div
+          style={{
+            position: 'fixed',
+            left: `${tooltipData.x}px`,
+            top: tooltipData.placement === 'bottom' ? `${tooltipData.y}px` : undefined,
+            bottom: tooltipData.placement === 'top' ? `${window.innerHeight - tooltipData.y}px` : undefined,
+            width: '380px',
+            zIndex: 9999,
+          }}
+          className="pointer-events-none bg-slate-950/95 backdrop-blur-md text-slate-100 border border-slate-700 rounded-xl shadow-2xl p-4 space-y-3 animate-in fade-in zoom-in-95 duration-100"
+        >
+          {/* Tooltip Header */}
+          <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+            <div>
+              <span className="text-[10px] font-mono text-amber-400 font-bold block">{tooltipData.product.brand}</span>
+              <h4 className="text-xs font-bold text-white line-clamp-1">{tooltipData.product.name}</h4>
+            </div>
+            <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">
+              {tooltipData.product.diameter}
+            </span>
+          </div>
+
+          {/* Spec 1: 배광 곡선 및 조사 각도 (Beam Angle & Light Distribution) */}
+          <div className="bg-slate-900/90 rounded-lg p-2.5 border border-amber-500/30 space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-amber-300 flex items-center gap-1.5">
+                <Compass className="w-3.5 h-3.5 text-amber-400" />
+                <span>광학 배광 곡선 & 조사 각도</span>
+              </span>
+              <span className="text-[9px] bg-amber-400/20 text-amber-200 px-1.5 py-0.2 rounded font-mono font-bold">
+                광학 렌즈 배광
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-200 leading-snug">
+              {tooltipData.product.beamAngle}
+            </p>
+          </div>
+
+          {/* Spec 2: 발열량 및 방열 설계 (Thermal Dissipation & Heat Sink) */}
+          <div className="bg-slate-900/90 rounded-lg p-2.5 border border-red-500/30 space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-red-300 flex items-center gap-1.5">
+                <Thermometer className="w-3.5 h-3.5 text-red-400" />
+                <span>발열량 & 방열 구조 (Heat Sink)</span>
+              </span>
+              <span className="text-[9px] bg-red-400/20 text-red-200 px-1.5 py-0.2 rounded font-mono font-bold">
+                {tooltipData.product.numericWattageW <= 15 ? '초저발열형' : tooltipData.product.numericWattageW <= 25 ? '표준 방열' : '고효율 핀 방열'}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-200 leading-snug">
+              {tooltipData.product.thermalManagement}
+            </p>
+          </div>
+
+          {/* Spec 3: 방수방진 및 기계적 내구성 (Protection & Durability) */}
+          <div className="bg-slate-900/90 rounded-lg p-2.5 border border-sky-500/30 space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-sky-300 flex items-center gap-1.5">
+                <Droplets className="w-3.5 h-3.5 text-sky-400" />
+                <span>방수방진 & 기계적 충격 등급</span>
+              </span>
+              <span className="text-[9px] bg-sky-400/20 text-sky-200 px-1.5 py-0.2 rounded font-mono font-bold">
+                {tooltipData.product.ip}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-200 leading-snug">
+              {tooltipData.product.protectionRating}
+            </p>
+          </div>
+
+          {/* Spec 4: LED 수명 & 권장 설치 사양 */}
+          <div className="grid grid-cols-2 gap-2 text-[10px] pt-0.5">
+            <div className="bg-slate-900/60 p-1.5 rounded border border-slate-800">
+              <span className="text-slate-400 flex items-center gap-1">
+                <Clock className="w-3 h-3 text-emerald-400" />
+                <span>LED 광원 수명</span>
+              </span>
+              <strong className="text-emerald-300 block truncate mt-0.5">{tooltipData.product.lifespan}</strong>
+            </div>
+            <div className="bg-slate-900/60 p-1.5 rounded border border-slate-800">
+              <span className="text-slate-400 flex items-center gap-1">
+                <CircleDot className="w-3 h-3 text-purple-400" />
+                <span>권장 설치 사양</span>
+              </span>
+              <strong className="text-purple-300 block truncate mt-0.5">{tooltipData.product.recommendedMount}</strong>
+            </div>
+          </div>
+
+          <div className="text-[9px] text-slate-400 text-center pt-1 border-t border-slate-800/80">
+            💡 클릭 시 전체 세부 사양, 결선도 및 추천 시나리오 확인
+          </div>
         </div>
       )}
 
@@ -958,6 +1126,36 @@ export const ProductsTab: React.FC = () => {
                     ))}
                   </tr>
                   <tr>
+                    <td className="p-2.5 font-bold bg-amber-50 border border-slate-200 text-amber-950">
+                      배광 곡선 및 조사 각도
+                    </td>
+                    {compareProducts.map(p => (
+                      <td key={p.id} className="p-2.5 border border-slate-200 text-[11px] text-amber-950 font-medium">
+                        {p.beamAngle}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr>
+                    <td className="p-2.5 font-bold bg-red-50 border border-slate-200 text-red-950">
+                      발열량 및 방열 구조
+                    </td>
+                    {compareProducts.map(p => (
+                      <td key={p.id} className="p-2.5 border border-slate-200 text-[11px] text-red-950">
+                        {p.thermalManagement}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr>
+                    <td className="p-2.5 font-bold bg-sky-50 border border-slate-200 text-sky-950">
+                      방수방진 & 내구성 등급
+                    </td>
+                    {compareProducts.map(p => (
+                      <td key={p.id} className="p-2.5 border border-slate-200 text-[11px] text-sky-950 font-bold">
+                        {p.protectionRating}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr>
                     <td className="p-2.5 font-bold bg-slate-50 border border-slate-200 text-emerald-950">
                       소비 전력 & 전원
                     </td>
@@ -984,6 +1182,17 @@ export const ProductsTab: React.FC = () => {
                     {compareProducts.map(p => (
                       <td key={p.id} className="p-2.5 border border-slate-200 text-[11px]">
                         {p.driving}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr>
+                    <td className="p-2.5 font-bold bg-slate-50 border border-slate-200">
+                      광원 수명 및 권장 설치
+                    </td>
+                    {compareProducts.map(p => (
+                      <td key={p.id} className="p-2.5 border border-slate-200 text-[11px]">
+                        <div>수명: {p.lifespan}</div>
+                        <div className="text-slate-500 mt-0.5">설치: {p.recommendedMount}</div>
                       </td>
                     ))}
                   </tr>
@@ -1059,12 +1268,10 @@ export const ProductsTab: React.FC = () => {
             <strong>1. 원형 지름 100mm 이상 규격 채택 이유:</strong><br/>
             - <strong>풍하중(Wind Load) 감소:</strong> 사각형 투광기 대비 원형 베젤은 바람 저항 계수(Drag Coefficient)가 30% 이상 낮아 지주 폴대 흔들림을 방지합니다.<br/>
             - <strong>광학 대칭성:</strong> 원형 렌즈/리플렉터는 방사형으로 고른 원형 배광 패턴을 형성하여 차로 진입각에 구애받지 않고 일관된 조도를 제공합니다.<br/>
-            <strong>2. IR 파장(740nm vs 850nm) 특성:</strong><br/>
-            - <strong>740nm (딥레드 IR):</strong> 이미지 센서의 양자효율(QE)이 82%로 매우 높아 850nm 대비 동일 전력에서 약 1.5~2배 밝은 LPR 영상을 얻을 수 있습니다 (인간 육안에 은은한 붉은 광선 인지).<br/>
-            - <strong>850nm (표준 LPR IR):</strong> 인간 육안에 거의 보이지 않는 비가시광선으로 야간 운전자의 눈부심이나 시야 방해를 100% 원천 차단합니다.<br/>
-            <strong>3. 과속 경고 가시광(백색 vs 적색) 선택 가이드:</strong><br/>
-            - <strong>백색(White 6000K) 순간 스트로보:</strong> 20~30ms 순간 펄스로 차량 차체 색상 및 탑승자 컬러 사진을 확보하면서도 과속 운전자에게 플래시 섬광으로 경각심을 줍니다.<br/>
-            - <strong>적색(Red 620~630nm) 경광등:</strong> 도로교통법상 정지·경고를 상징하는 색상으로 운전자의 본능적인 감속 반응을 이끌어내며, 야간 암적응(Dark Adaptation)을 해치지 않아 안전성이 우수합니다.
+            <strong>2. 배광 곡선 · 발열량 · 방수 등급 평가 핵심:</strong><br/>
+            - <strong>배광 곡선(Beam Profile):</strong> 원거리 번호판 집중 조사(20°~35°)와 운전자 과속 경고 가시광(45°~360° 광각)이 분리 또는 복합 배광되어야 불필요한 광손실을 막습니다.<br/>
+            - <strong>발열량 및 방열 기구:</strong> 야간 상시 점등 시 12V 배터리 효율과 LED 수명을 위해 알루미늄 다이캐스팅 핀 구조나 과열 자동 감온 회로(SafeContour)가 필수적입니다.<br/>
+            - <strong>방수방진(IP66/IP67):</strong> 지주 폴대 옥외 설치 환경에서 폭우, 태풍, 결로 현상을 원천 방지하기 위해 이중 O-링 및 고어텍스 벤트가 적용됩니다.
           </p>
         </div>
       </div>
@@ -1119,7 +1326,41 @@ export const ProductsTab: React.FC = () => {
                 </div>
               </div>
 
-              {/* Specs Grid */}
+              {/* Engineering Deep Specs (배광 곡선, 발열량, 방수 등급) */}
+              <div className="space-y-2 bg-slate-900 text-slate-100 p-3.5 rounded-xl border border-slate-800">
+                <div className="text-[11px] font-bold text-amber-400 flex items-center gap-1.5 mb-1">
+                  <Layers className="w-3.5 h-3.5 text-amber-400" />
+                  <span>핵심 엔지니어링 광학 및 환경 내구성 사양:</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px]">
+                  <div className="bg-slate-800/90 p-2.5 rounded-lg border border-slate-700">
+                    <span className="text-amber-300 font-bold block flex items-center gap-1 mb-1">
+                      <Compass className="w-3 h-3 text-amber-400" />
+                      배광 곡선 & 각도
+                    </span>
+                    <p className="text-[10px] text-slate-300 leading-tight">{selectedProduct.beamAngle}</p>
+                  </div>
+
+                  <div className="bg-slate-800/90 p-2.5 rounded-lg border border-slate-700">
+                    <span className="text-red-300 font-bold block flex items-center gap-1 mb-1">
+                      <Thermometer className="w-3 h-3 text-red-400" />
+                      발열량 & 방열 기구
+                    </span>
+                    <p className="text-[10px] text-slate-300 leading-tight">{selectedProduct.thermalManagement}</p>
+                  </div>
+
+                  <div className="bg-slate-800/90 p-2.5 rounded-lg border border-slate-700">
+                    <span className="text-sky-300 font-bold block flex items-center gap-1 mb-1">
+                      <Droplets className="w-3 h-3 text-sky-400" />
+                      방수방진 등급
+                    </span>
+                    <p className="text-[10px] text-slate-300 leading-tight">{selectedProduct.protectionRating}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* General Specs Grid */}
               <div className="grid grid-cols-2 gap-2.5 bg-slate-50 p-3 rounded-lg border border-slate-200">
                 <div>
                   <span className="text-slate-400 block text-[10px]">구분 / 유형</span>
@@ -1138,12 +1379,12 @@ export const ProductsTab: React.FC = () => {
                   <strong className="text-slate-900">{selectedProduct.ip}</strong>
                 </div>
                 <div>
-                  <span className="text-slate-400 block text-[10px]">광원 및 파장 종합</span>
-                  <strong className="text-slate-900">{selectedProduct.wavelength}</strong>
+                  <span className="text-slate-400 block text-[10px]">광원 수명 (MTBF)</span>
+                  <strong className="text-slate-900">{selectedProduct.lifespan}</strong>
                 </div>
                 <div>
-                  <span className="text-slate-400 block text-[10px]">유효 조사 / 시인 거리</span>
-                  <strong className="text-slate-900">{selectedProduct.range}</strong>
+                  <span className="text-slate-400 block text-[10px]">권장 설치 지주</span>
+                  <strong className="text-slate-900">{selectedProduct.recommendedMount}</strong>
                 </div>
                 <div className="col-span-2">
                   <span className="text-slate-400 block text-[10px]">트리거 및 연동 방식</span>

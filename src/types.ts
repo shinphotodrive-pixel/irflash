@@ -22,6 +22,11 @@ export interface ProductItem {
   range: string;
   price: string;
   ip: string;
+  beamAngle: string; // 배광 곡선 및 조사 각도
+  thermalManagement: string; // 발열량 및 방열 설계 (열저항, 방열핀, 동작온도)
+  protectionRating: string; // 방수방진 및 기계적 보호 등급 (IP & IK)
+  lifespan: string; // 광원 수명 및 신뢰성 (MTBF)
+  recommendedMount: string; // 권장 설치 높이 및 지향각
   officialUrl: string;
   youtubeUrl: string;
   buyUrl: string;
